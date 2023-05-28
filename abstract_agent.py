@@ -99,6 +99,9 @@ class Agent(ABC):
             rewards.append(current_episode_reward)
             episodes_steps.append(episode_steps)
 
+            if total_steps % 1000 == 0:
+                self.target_net.load_state_dict(self.policy_net.state_dict())
+
             mean_reward = np.mean(rewards[-100:])
             mean_steps = np.mean(episodes_steps[-100:])
             self.writer.add_scalar("epsilon", self.epsilon, total_steps)
@@ -132,7 +135,7 @@ class Agent(ABC):
     def compute_epsilon(self, steps_so_far):
         if steps_so_far < self.steps_before_training:
             return self.epsilon_i
-        
+
         traing_steps = steps_so_far - self.steps_before_training
         if hasattr(self, "epsilon_anneal") and self.epsilon_anneal is not None:
             if traing_steps > self.epsilon_anneal:

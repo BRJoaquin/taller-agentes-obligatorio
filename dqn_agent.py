@@ -41,6 +41,8 @@ class DQNAgent(Agent):
         )
         # Asignar el modelo al agente (y enviarlo al dispositivo adecuado)
         self.policy_net = model.to(self.device)
+        # Crear la red objetivo y copiar los pesos de la red de política
+        self.target_net = model.to(self.device)
 
         # Asignar una función de costo (MSE)  (y enviarla al dispositivo adecuado)
         self.loss_function = nn.MSELoss().to(self.device)
@@ -97,7 +99,7 @@ class DQNAgent(Agent):
 
             # Obtener max a' Q para los siguientes estados (del minibatch). Es importante hacer .detach() al resultado de este computo.
             # Si el estado siguiente es terminal (done) este valor debería ser 0.
-            max_q_next_state = self.policy_net(next_states).detach().max(1)[0]
+            max_q_next_state = self.target_net(next_states).detach().max(1)[0]
 
             # Compute el target de DQN de acuerdo a la Ecuacion (3) del paper.
             # Si el estado siguiente es terminal (done) este valor debería ser 0.
