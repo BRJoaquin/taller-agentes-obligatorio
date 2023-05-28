@@ -23,6 +23,7 @@ class DQNAgent(Agent):
         epsilon_anneal_time,
         epsilon_decay,
         episode_block,
+        steps_before_training=10000,
     ):
         super().__init__(
             gym_env,
@@ -36,6 +37,7 @@ class DQNAgent(Agent):
             epsilon_anneal_time,
             epsilon_decay,
             episode_block,
+            steps_before_training,
         )
         # Asignar el modelo al agente (y enviarlo al dispositivo adecuado)
         self.policy_net = model.to(self.device)
@@ -50,14 +52,21 @@ class DQNAgent(Agent):
 
     # Epsilon greedy strategy
     def select_action(self, state, current_steps, train=True):
-        self.compute_epsilon(current_steps)
-        if train and np.random.random() < self.epsilon:
-            action = self.env.action_space.sample()
-        else:
-            # Get the action from the policy network
-            # transform the state into a tensor first
+        if not train:
             state_tensor = self.state_processing_function(state).to(self.device)
             action = self.policy_net(state_tensor).argmax().item()
+        else:
+            epsilon = self.compute_epsilon(current_steps)
+            if (
+                current_steps < self.steps_before_training
+                or np.random.random() < epsilon
+            ):
+                action = self.env.action_space.sample()
+            else:
+                # Get the action from the policy network
+                # transform the state into a tensor first
+                state_tensor = self.state_processing_function(state).to(self.device)
+                action = self.policy_net(state_tensor).argmax().item()
         return action
 
     def update_weights(self, total_steps):
@@ -69,11 +78,7 @@ class DQNAgent(Agent):
             transitions = self.memory.sample(self.batch_size)
 
             # # Enviar los tensores al dispositivo correspondiente.
-            states = (
-                torch.from_numpy(np.array([t.state for t in transitions]))
-                .float()
-                .to(self.device)
-            )
+            states = torch.tensor([t.state for t in transitions], dtype=torch.float, device=self.device)
             actions = torch.cat(
                 [torch.tensor(t.action).view(1) for t in transitions]
             ).to(self.device)
@@ -83,11 +88,7 @@ class DQNAgent(Agent):
             dones = torch.cat([torch.tensor(t.done).view(1) for t in transitions]).to(
                 self.device
             )
-            next_states = (
-                torch.from_numpy(np.array([t.next_state for t in transitions]))
-                .float()
-                .to(self.device)
-            )
+            next_states = torch.tensor([t.next_state for t in transitions], dtype=torch.float, device=self.device)
 
             # Obetener el valor estado-accion (Q) de acuerdo a la policy net para todo elemento (estados) del minibatch.
 

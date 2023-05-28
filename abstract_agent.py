@@ -22,6 +22,7 @@ class Agent(ABC):
         epsilon_anneal_time,
         epsilon_decay,
         episode_block,
+        steps_before_training=10000,
     ):
         # Assign device
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -44,6 +45,7 @@ class Agent(ABC):
         self.epsilon_anneal = epsilon_anneal_time
         self.epsilon_decay = epsilon_decay
         self.episode_block = episode_block
+        self.steps_before_training = steps_before_training
 
         self.total_steps = 0
 
@@ -128,16 +130,20 @@ class Agent(ABC):
     # Calculate the epsilon value for the current step
     # If epsilon_anneal is not set, then the epsilon value will be decayed exponentially
     def compute_epsilon(self, steps_so_far):
+        if steps_so_far < self.steps_before_training:
+            return self.epsilon_i
+        
+        traing_steps = steps_so_far - self.steps_before_training
         if hasattr(self, "epsilon_anneal") and self.epsilon_anneal is not None:
-            if steps_so_far > self.epsilon_anneal:
+            if traing_steps > self.epsilon_anneal:
                 self.epsilon = self.epsilon_f
             else:
                 self.epsilon = self.epsilon_i - (self.epsilon_i - self.epsilon_f) * (
-                    steps_so_far / self.epsilon_anneal
+                    traing_steps / self.epsilon_anneal
                 )
         else:
             self.epsilon = max(
-                self.epsilon_f, self.epsilon_i * (self.epsilon_decay**steps_so_far)
+                self.epsilon_f, self.epsilon_i * (self.epsilon_decay**traing_steps)
             )
         return self.epsilon
 

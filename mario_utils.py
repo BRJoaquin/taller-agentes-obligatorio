@@ -163,5 +163,5 @@ def make_env(env_name):
     env = ResizeObservation(env, shape=84)
     env = FrameStack(env, num_stack=4)
     env = SafeCloseWrapper(env)
-    env = MyJoypadSpace(env, [["NOOP"], ["right"], ["right", "A"], ["A"]])
+    env = MyJoypadSpace(env, [["right"], ["right", "A"]])
     return env
