@@ -1,6 +1,6 @@
 
 
-![Mario Playing](./assests/images/ezgif-2-9ee4c4d407.gif)
+![Mario Playing](./assets/images/ezgif-2-9ee4c4d407.gif)
 
 # Abstract 
 
