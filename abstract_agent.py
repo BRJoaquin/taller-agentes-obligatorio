@@ -99,9 +99,15 @@ class Agent(ABC):
             rewards.append(current_episode_reward)
             episodes_steps.append(episode_steps)
 
-            if total_steps % 1000 == 0:
+            # Update the target network every episode_block episodes
+            if ep % self.episode_block == 0:
                 self.target_net.load_state_dict(self.policy_net.state_dict())
 
+            # Save the model every 1000 episodes (just in case)
+            if ep % 1000 == 0:
+                self.save_model(f"backup/model_{ep}.pt")
+
+            # Statistics
             mean_reward = np.mean(rewards[-100:])
             mean_steps = np.mean(episodes_steps[-100:])
             self.writer.add_scalar("epsilon", self.epsilon, total_steps)
