@@ -160,7 +160,7 @@ def make_env(env_name):
 
     env = SkipFrame(env, skip=4)
     env = GrayScaleObservation(env)
-    env = ResizeObservation(env, shape=84)
+    env = ResizeObservation(env, shape=128)
     env = FrameStack(env, num_stack=4)
     env = SafeCloseWrapper(env)
     env = MyJoypadSpace(env, [["right"], ["right", "A"]])
