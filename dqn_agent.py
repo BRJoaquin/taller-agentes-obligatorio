@@ -77,23 +77,7 @@ class DQNAgent(Agent):
             self.optimizer.zero_grad()
 
             # Obtener un minibatch de la memoria. Resultando en tensores de estados, acciones, recompensas, flags de terminacion y siguentes estados.
-            transitions = self.memory.sample(self.batch_size)
-
-            # # Enviar los tensores al dispositivo correspondiente.
-            # states = torch.tensor([t.state for t in transitions], dtype=torch.float, device=self.device)
-            states_np = np.array([t.state for t in transitions])
-            states = torch.tensor(states_np, dtype=torch.float, device=self.device)
-            actions = torch.cat(
-                [torch.tensor(t.action).view(1) for t in transitions]
-            ).to(self.device)
-            rewards = torch.cat(
-                [torch.tensor(t.reward).view(1) for t in transitions]
-            ).to(self.device)
-            dones = torch.cat([torch.tensor(t.done).view(1) for t in transitions]).to(
-                self.device
-            )
-            next_states_np = np.array([t.next_state for t in transitions])
-            next_states = torch.tensor(next_states_np, dtype=torch.float, device=self.device)
+            states, actions, rewards, dones, next_states = self.memory.sample(self.batch_size)
 
             # Obetener el valor estado-accion (Q) de acuerdo a la policy net para todo elemento (estados) del minibatch.
 
