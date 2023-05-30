@@ -1,3 +1,7 @@
+
+
+![Mario Playing](.assests/images/ezgif-2-9ee4c4d407.gif)
+
 # Abstract 
 
 This project applies Deep Reinforcement Learning (DRL) techniques to train an agent to play Super Mario Bros using OpenAI's Gym library and the NES emulator environment.
