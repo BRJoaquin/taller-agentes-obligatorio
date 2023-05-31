@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from replay_memory import ReplayMemory, Transition
+from replay_memory import ReplayMemory
 from abc import ABC, abstractmethod
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
@@ -172,7 +172,7 @@ class Agent(ABC):
             # Ejecutar la accion, observar resultado y procesarlo como indica el algoritmo.
             next_state, reward, done, _ = env.step(action)
 
-            # print(f"Step {step_counter} - Action {action} - Reward {reward}")
+            # print(f"Step {step_counter} - Action {action} - Reward {reward} - Info {_}")
 
             step_counter += 1
 

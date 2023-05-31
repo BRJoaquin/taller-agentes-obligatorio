@@ -3,13 +3,6 @@ from collections import namedtuple
 import random
 import torch
 
-Transition = namedtuple(
-    "Transition", ("state", "action", "reward", "done", "next_state")
-)
-
-# Ejemplo uso
-# nueva_tupla = Transition(state, action, reward, done, next_state)
-
 
 class ReplayMemory:
     def __init__(self, buffer_size):

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from replay_memory import ReplayMemory, Transition
+from replay_memory import ReplayMemory
 from torch.utils.tensorboard import SummaryWriter
 from tqdm.notebook import tqdm
 import numpy as np
@@ -80,12 +80,10 @@ class DQNAgent(Agent):
             states, actions, rewards, dones, next_states = self.memory.sample(self.batch_size)
 
             # Obetener el valor estado-accion (Q) de acuerdo a la policy net para todo elemento (estados) del minibatch.
-
             actions = actions.unsqueeze(-1)  # Agrega una dimensión extra al final
             q_actual = self.policy_net(states).gather(1, actions)
 
             # Obtener max a' Q para los siguientes estados (del minibatch). Es importante hacer .detach() al resultado de este computo.
-            # Si el estado siguiente es terminal (done) este valor debería ser 0.
             max_q_next_state = self.target_net(next_states).detach().max(1)[0]
 
             # Compute el target de DQN de acuerdo a la Ecuacion (3) del paper.
@@ -98,6 +96,5 @@ class DQNAgent(Agent):
 
             loss.backward()
             self.optimizer.step()
-            self.policy_net
 
             self.writer.add_scalar("Loss/train", loss.item(), total_steps)
