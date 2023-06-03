@@ -39,24 +39,32 @@ class DQNAgent(Agent):
             episode_block,
             steps_before_training,
         )
-        # Asignar el modelo al agente (y enviarlo al dispositivo adecuado)
+        # Assign policy net to device
         self.policy_net = model.to(self.device)
-        # Crear la red objetivo y copiar los pesos de la red de política
+        # Assign target net to device
         self.target_net = model.to(self.device)
 
-        # Asignar una función de costo (MSE)  (y enviarla al dispositivo adecuado)
+        # Assign loss function (MSE) to device
         self.loss_function = nn.MSELoss().to(self.device)
 
-        # Asignar un optimizador (Adam)
+        # Assign optimizer to policy net parameters
         self.optimizer = torch.optim.Adam(
             self.policy_net.parameters(), lr=learning_rate
         )
 
+    def greedy_policy(self, state):
+        # Get the action from the policy network
+        # transform the state into a tensor first
+        state_tensor = self.state_processing_function(state).to(self.device)
+        action = self.policy_net(state_tensor).argmax().item()
+        return action
+
     # Epsilon greedy strategy
+    # In case we are training, we select a random action with probability epsilon
+    # In case we are not training, we always select the best action (greedy)
     def select_action(self, state, current_steps, train=True):
         if not train:
-            state_tensor = self.state_processing_function(state).to(self.device)
-            action = self.policy_net(state_tensor).argmax().item()
+            action = self.greedy_policy(state)
         else:
             epsilon = self.compute_epsilon(current_steps)
             if (
@@ -65,36 +73,37 @@ class DQNAgent(Agent):
             ):
                 action = self.env.action_space.sample()
             else:
-                # Get the action from the policy network
-                # transform the state into a tensor first
-                state_tensor = self.state_processing_function(state).to(self.device)
-                action = self.policy_net(state_tensor).argmax().item()
+                action = self.greedy_policy(state)
         return action
 
     def update_weights(self, total_steps):
         if len(self.memory) > self.batch_size:
-            # Resetear gradientes
+            # Reset gradients
             self.optimizer.zero_grad()
 
-            # Obtener un minibatch de la memoria. Resultando en tensores de estados, acciones, recompensas, flags de terminacion y siguentes estados.
+            # Sample a batch of transitions from the replay memory
             states, actions, rewards, dones, next_states = self.memory.sample(self.batch_size)
 
-            # Obetener el valor estado-accion (Q) de acuerdo a la policy net para todo elemento (estados) del minibatch.
-            actions = actions.unsqueeze(-1)  # Agrega una dimensión extra al final
+            # Add a dimension to actions to be able to use gather
+            actions = actions.unsqueeze(-1) 
+            # Get the current Q values for all actions from the policy net
             q_actual = self.policy_net(states).gather(1, actions)
 
-            # Obtener max a' Q para los siguientes estados (del minibatch). Es importante hacer .detach() al resultado de este computo.
+            # Get the max Q values for all actions from the target net
+            # We detach the target values from the computational graph to avoid backpropagating through them
+            # We don't want to update the target net parameters, we want to update the policy net parameters
             max_q_next_state = self.target_net(next_states).detach().max(1)[0]
 
-            # Compute el target de DQN de acuerdo a la Ecuacion (3) del paper.
-            # Si el estado siguiente es terminal (done) este valor debería ser 0.
-            target = (rewards + self.gamma * max_q_next_state) * (1 - dones.float())
+            # Compute the target Q values
+            # In case the episode is done, the target Q value is zero
+            target = rewards + (1 - dones) * self.gamma * max_q_next_state.unsqueeze(-1)
 
-            # Compute el costo y actualice los pesos.
-            # En Pytorch la funcion de costo se llaman con (predicciones, objetivos) en ese orden.
+            # Compute the loss between actual and target Q values
             loss = self.loss_function(q_actual.squeeze(), target)
 
+            # Backpropagate the loss
             loss.backward()
             self.optimizer.step()
 
+            # Statistics: log the loss to tensorboard
             self.writer.add_scalar("Loss/train", loss.item(), total_steps)

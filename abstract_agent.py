@@ -31,7 +31,7 @@ class Agent(ABC):
         self.state_processing_function = obs_processing_func
 
         # Create the replay memory
-        self.memory = ReplayMemory(memory_buffer_size)
+        self.memory = ReplayMemory(memory_buffer_size, self.device)
 
         self.env = gym_env
 
@@ -47,8 +47,6 @@ class Agent(ABC):
         self.episode_block = episode_block
         self.steps_before_training = steps_before_training
 
-        self.total_steps = 0
-
     def train(
         self,
         number_episodes=50000,
@@ -56,18 +54,23 @@ class Agent(ABC):
         max_steps=1000000,
         writer_name="default_writer_name",
     ):
+        # Save the rewards and steps of each episode to statistics
         rewards = []
         episodes_steps = []
+        
+        # Initialize the total number of steps of the training
         total_steps = 0
+
+        # Create the writer for tensorboard
         self.writer = SummaryWriter(comment="-" + writer_name)
 
         for ep in tqdm(range(number_episodes), unit=" episodes"):
+            # Stop the training if we reach the maximum number of steps
             if total_steps > max_steps:
                 break
 
+            # Reset the environment
             state = self.env.reset()
-
-            # Observar estado inicial como indica el algoritmo
 
             current_episode_reward = 0.0
             episode_steps = 0
@@ -89,13 +92,14 @@ class Agent(ABC):
                 # Move to the next state
                 state = next_state
 
-                # Actualizar el modelo
+                # Update the weights of the network
                 self.update_weights(total_steps)
 
                 # We don't want to play forever (a way to truncate the episode)
                 if done or episode_steps > max_steps_episode:
                     break
-
+                
+            # Append the rewards and steps of the episode
             rewards.append(current_episode_reward)
             episodes_steps.append(episode_steps)
 
@@ -120,7 +124,7 @@ class Agent(ABC):
                 print(
                     f"Episode {ep} - Avg. Reward over the last {self.episode_block} episodes {np.mean(rewards[-self.episode_block:])} epsilon {self.epsilon} steps {np.mean(episodes_steps[-self.episode_block:])} total steps {total_steps}"
                 )
-
+        # Report when the training is finished
         print(
             f"Episode {ep + 1} - Avg. Reward over the last {self.episode_block} episodes {np.mean(rewards[-self.episode_block:])} epsilon {self.epsilon} total steps {total_steps}"
         )
