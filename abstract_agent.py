@@ -103,13 +103,9 @@ class Agent(ABC):
             rewards.append(current_episode_reward)
             episodes_steps.append(episode_steps)
 
-            # Update the target network every episode_block episodes
-            if ep % self.episode_block == 0:
-                self.target_net.load_state_dict(self.policy_net.state_dict())
-
             # Save the model every 1000 episodes (just in case)
             if ep % 1000 == 0:
-                self.save_model(f"backup/model_{ep}.pt")
+                self.backup_weights(f"backup/model_{ep}.pt")
 
             # Statistics
             mean_reward = np.mean(rewards[-100:])
@@ -133,12 +129,8 @@ class Agent(ABC):
 
         return rewards
 
-    def save_model(self, path):
-        torch.save(self.policy_net.state_dict(), path)
-
-    def load_model(self, path):
-        self.policy_net.load_state_dict(torch.load(path))
-        self.policy_net.eval()
+    def save_model(self, policy, path):
+        torch.save(policy.state_dict(), path)
 
     # Calculate the epsilon value for the current step
     # If epsilon_anneal is not set, then the epsilon value will be decayed exponentially
@@ -195,4 +187,12 @@ class Agent(ABC):
 
     @abstractmethod
     def update_weights(self, total_steps):
+        pass
+
+    @abstractmethod
+    def sync_weights(self):
+        pass
+
+    @abstractmethod
+    def backup_weights(self, path):
         pass

@@ -82,10 +82,12 @@ class DQNAgent(Agent):
             self.optimizer.zero_grad()
 
             # Sample a batch of transitions from the replay memory
-            states, actions, rewards, dones, next_states = self.memory.sample(self.batch_size)
+            states, actions, rewards, dones, next_states = self.memory.sample(
+                self.batch_size
+            )
 
             # Add a dimension to actions to be able to use gather
-            actions = actions.unsqueeze(-1) 
+            actions = actions.unsqueeze(-1)
             # Get the current Q values for all actions from the policy net
             q_actual = self.policy_net(states).gather(1, actions)
 
@@ -96,7 +98,7 @@ class DQNAgent(Agent):
 
             # Compute the target Q values
             # In case the episode is done, the target Q value is zero
-            target = rewards + (1 - dones) * self.gamma * max_q_next_state.unsqueeze(-1)
+            target = (rewards + self.gamma * max_q_next_state) * (1 - dones.float())
 
             # Compute the loss between actual and target Q values
             loss = self.loss_function(q_actual.squeeze(), target)
@@ -105,5 +107,15 @@ class DQNAgent(Agent):
             loss.backward()
             self.optimizer.step()
 
+            # Update the target net weights every 100 steps
+            if total_steps % 100 == 0:
+                self.sync_weights()
+
             # Statistics: log the loss to tensorboard
             self.writer.add_scalar("Loss/train", loss.item(), total_steps)
+
+    def sync_weights(self):
+        self.target_net.load_state_dict(self.policy_net.state_dict())
+
+    def backup_weights(self, path):
+        self.save_model(self.policy_net, path)
