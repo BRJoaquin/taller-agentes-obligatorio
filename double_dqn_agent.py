@@ -56,19 +56,25 @@ class DoubleDQNAgent(Agent):
         # Assign a sync target
         self.sync_target = sync_target
 
-    def select_action(self, state, current_steps, train=True):
+    def greedy_policy(self, state):
         state_tensor = self.state_processing_function(state).to(self.device)
+        # Calculate the Q values from both networks and sum them. We don't need to calculate gradients here, so we use torch.no_grad()
         with torch.no_grad():
             q_values = self.q_a(state_tensor) + self.q_b(state_tensor)
+        return torch.argmax(q_values).item()
 
-        if train:
+    def select_action(self, state, current_steps, train=True):
+        if not train:
+            action = self.greedy_policy(state)
+        else:
             epsilon = self.compute_epsilon(current_steps)
-            if np.random.random() < epsilon:
+            if (
+                current_steps < self.steps_before_training
+                or np.random.random() < epsilon
+            ):
                 action = self.env.action_space.sample()
             else:
-                action = torch.argmax(q_values).item()
-        else:
-            action = torch.argmax(q_values).item()
+                action = self.greedy_policy(state)
         return action
 
     def update_weights(self, total_steps):
@@ -95,7 +101,7 @@ class DoubleDQNAgent(Agent):
             self.optimizer.zero_grad()
 
             # Compute the loss and update the weights.
-            loss = self.loss_function(q_actual, target)
+            loss = self.loss_function(q_actual.squeeze(), target)
 
             # Backpropagate
             loss.backward()
@@ -109,7 +115,10 @@ class DoubleDQNAgent(Agent):
             self.writer.add_scalar("Loss/train", loss.item(), total_steps)
 
     def sync_weights(self):
-        self.q_b.load_state_dict(self.q_a.state_dict())
+        if np.random.random() < 0.5:
+            self.q_b.load_state_dict(self.q_a.state_dict())
+        else:
+            self.q_a.load_state_dict(self.q_b.state_dict())
 
     def backup_weights(self, path):
         torch.save(self.q_a.state_dict(), path)
