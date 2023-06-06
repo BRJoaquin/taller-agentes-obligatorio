@@ -57,7 +57,7 @@ class Agent(ABC):
         # Save the rewards and steps of each episode to statistics
         rewards = []
         episodes_steps = []
-        
+
         # Initialize the total number of steps of the training
         total_steps = 0
 
@@ -71,26 +71,41 @@ class Agent(ABC):
 
             # Reset the environment
             state = self.env.reset()
+            x_pos, time = self.get_initial_info(self.env)
 
             current_episode_reward = 0.0
             episode_steps = 0
 
             for s in range(max_steps):
                 # select the next action
-                action = self.select_action(state, total_steps, True)
+                action = self.select_action(state, total_steps, True, x_pos, time)
 
                 # Execute the action and get the next state, reward and done flag
-                next_state, reward, done, _ = self.env.step(action)
+                next_state, reward, done, info = self.env.step(action)
 
                 current_episode_reward += reward
                 total_steps += 1
                 episode_steps += 1
+                next_x_pos = info["x_pos"]
+                next_time = info["time"]
 
                 # Save the transition in memory
-                self.memory.add(state, action, reward, done, next_state)
+                self.add_to_memory(
+                    state,
+                    action,
+                    reward,
+                    done,
+                    next_state,
+                    x_pos,
+                    time,
+                    next_x_pos,
+                    next_time,
+                )
 
                 # Move to the next state
                 state = next_state
+                x_pos = next_x_pos
+                time = next_time
 
                 # Update the weights of the network
                 self.update_weights(total_steps)
@@ -98,7 +113,7 @@ class Agent(ABC):
                 # We don't want to play forever (a way to truncate the episode)
                 if done or episode_steps > max_steps_episode:
                     break
-                
+
             # Append the rewards and steps of the episode
             rewards.append(current_episode_reward)
             episodes_steps.append(episode_steps)
@@ -157,18 +172,23 @@ class Agent(ABC):
 
         # Observar estado inicial como indica el algoritmo
         state = env.reset()
+        x_pos, time = self.get_initial_info(env)
 
         step_counter = 0
         while not done:
             env.render()  # Queremos hacer render para obtener un video al final.
 
             # Seleccione una accion de forma completamente greedy.
-            action = self.select_action(state, step_counter, train=False)
+            action = self.select_action(
+                state, step_counter, train=False, x_pos=x_pos, time=time
+            )
 
             # Ejecutar la accion, observar resultado y procesarlo como indica el algoritmo.
-            next_state, reward, done, _ = env.step(action)
+            next_state, reward, done, info = env.step(action)
+            next_x_pos = info["x_pos"]
+            next_time = info["time"]
 
-            # print(f"Step {step_counter} - Action {action} - Reward {reward} - Info {_}")
+            # print(f"Step {step_counter} - Action {action} - Reward {reward} - Info {info}")
 
             step_counter += 1
 
@@ -177,12 +197,34 @@ class Agent(ABC):
 
             # Actualizar el estado
             state = next_state
+            x_pos = next_x_pos
+            time = next_time
 
         env.close()
         show_video()
 
+    # Get the initial information of the environment
+    def get_initial_info(self, env):
+        # not a fancy way to get the initial information (take the first step and do nothing)
+        _, _, _, info = env.step(0)
+        return info["x_pos"], info["time"]
+
+    def add_to_memory(
+        self,
+        state,
+        action,
+        reward,
+        done,
+        next_state,
+        x_pos,
+        time,
+        next_x_pos,
+        next_time,
+    ):
+        self.memory.add(state, action, reward, done, next_state)
+
     @abstractmethod
-    def select_action(self, state, current_steps, train=True):
+    def select_action(self, state, current_steps, train=True, x_pos=None, time=None):
         pass
 
     @abstractmethod

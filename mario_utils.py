@@ -142,6 +142,23 @@ class ResizeObservation(gym.ObservationWrapper):
         return observation
 
 
+class CroppingObservationWrapper(gym.ObservationWrapper):
+    def __init__(self, env, top_crop, bottom_crop, left_crop, right_crop):
+        super().__init__(env)
+        self.top_crop = top_crop
+        self.bottom_crop = bottom_crop
+        self.left_crop = left_crop
+        self.right_crop = right_crop
+        old_shape = self.observation_space.shape
+        new_shape = (old_shape[0] - self.top_crop - self.bottom_crop, old_shape[1] - self.left_crop - self.right_crop, old_shape[2])
+        self.observation_space = gym.spaces.Box(low=0, high=255, shape=new_shape, dtype=self.observation_space.dtype)
+
+    def observation(self, observation):
+        cropped_observation = observation[self.top_crop:-self.bottom_crop, self.left_crop:-self.right_crop, :]
+        return cropped_observation
+
+
+
 # close is called multiple times
 class SafeCloseWrapper(gym.Wrapper):
     def __init__(self, env):
@@ -155,13 +172,15 @@ class SafeCloseWrapper(gym.Wrapper):
 
 
 # Apply Wrappers to environment
-def make_env(env_name):
+def make_env(env_name, actions=[["right"], ["right", "A"]], do_crop=False):
     env = gym_super_mario_bros.make(env_name)
 
     env = SkipFrame(env, skip=4)
+    if do_crop:
+        env = CroppingObservationWrapper(env, top_crop=100, bottom_crop=20, left_crop=40, right_crop = 40)
     env = GrayScaleObservation(env)
     env = ResizeObservation(env, shape=128)
     env = FrameStack(env, num_stack=4)
     env = SafeCloseWrapper(env)
-    env = MyJoypadSpace(env, [["right"], ["right", "A"]])
+    env = MyJoypadSpace(env, actions)
     return env

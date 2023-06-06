@@ -62,7 +62,7 @@ class DQNAgent(Agent):
     # Epsilon greedy strategy
     # In case we are training, we select a random action with probability epsilon
     # In case we are not training, we always select the best action (greedy)
-    def select_action(self, state, current_steps, train=True):
+    def select_action(self, state, current_steps, train=True, x_pos=None, time=None):
         if not train:
             action = self.greedy_policy(state)
         else:

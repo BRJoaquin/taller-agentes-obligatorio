@@ -1,14 +1,14 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from replay_memory import ReplayMemory
+from prioritize_replay_memory import PrioritizedReplayMemory
 from torch.utils.tensorboard import SummaryWriter
 from tqdm.notebook import tqdm
 import numpy as np
 from abstract_agent import Agent
 
 
-class DoubleDQNAgent(Agent):
+class CustomDQNAgent(Agent):
     def __init__(
         self,
         gym_env,
@@ -56,16 +56,28 @@ class DoubleDQNAgent(Agent):
         # Assign a sync target
         self.sync_target = sync_target
 
-    def greedy_policy(self, state):
+        # Create the prioritized replay memory
+        self.memory = PrioritizedReplayMemory(memory_buffer_size, self.device)
+
+    def greedy_policy(self, state, x_pos=None, time=None):
+        # Convert the state to a tensor and send it to the proper device
         state_tensor = self.state_processing_function(state).to(self.device)
+        x_pos_tensor = torch.tensor(x_pos).unsqueeze(0).to(self.device)
+        time_tensor = torch.tensor(time).unsqueeze(0).to(self.device)
+
         # Calculate the Q values from both networks and sum them. We don't need to calculate gradients here, so we use torch.no_grad()
         with torch.no_grad():
-            q_values = self.q_a(state_tensor) + self.q_b(state_tensor)
+            q_values = self.q_a(state_tensor, x_pos_tensor, time_tensor) + self.q_b(
+                state_tensor, x_pos_tensor, time_tensor
+            )
         return torch.argmax(q_values).item()
 
+    # Epsilon greedy strategy
+    # In case we are training, we select a random action with probability epsilon
+    # In case we are not training, we always select the best action (greedy)
     def select_action(self, state, current_steps, train=True, x_pos=None, time=None):
         if not train:
-            action = self.greedy_policy(state)
+            action = self.greedy_policy(state, x_pos, time)
         else:
             epsilon = self.compute_epsilon(current_steps)
             if (
@@ -74,24 +86,42 @@ class DoubleDQNAgent(Agent):
             ):
                 action = self.env.action_space.sample()
             else:
-                action = self.greedy_policy(state)
+                action = self.greedy_policy(state, x_pos, time)
         return action
 
     def update_weights(self, total_steps):
         if len(self.memory) > self.batch_size:
             # Get a minibatch from memory. Resulting in tensors of states, actions, rewards, termination flags, and next states.
-            states, actions, rewards, dones, next_states = self.memory.sample(
-                self.batch_size
-            )
+            (
+                states,
+                actions,
+                rewards,
+                dones,
+                next_states,
+                x_pos,
+                time,
+                next_x_pos,
+                next_time,
+                indices,
+                weights,
+            ) = self.memory.sample(self.batch_size)
 
             # Randomly update Q_a or Q_b using the other to calculate the value of the next states.
             if np.random.random() < 0.5:
-                q_actual = self.q_a(states).gather(1, actions.unsqueeze(-1))
-                max_q_next_state = self.q_b(next_states).detach().max(1)[0]
+                q_actual = self.q_a(states, x_pos, time).gather(
+                    1, actions.unsqueeze(-1)
+                )
+                max_q_next_state = (
+                    self.q_b(next_states, next_x_pos, next_time).detach().max(1)[0]
+                )
                 self.optimizer = self.optimizer_A
             else:
-                q_actual = self.q_b(states).gather(1, actions.unsqueeze(-1))
-                max_q_next_state = self.q_a(next_states).detach().max(1)[0]
+                q_actual = self.q_b(states, x_pos, time).gather(
+                    1, actions.unsqueeze(-1)
+                )
+                max_q_next_state = (
+                    self.q_a(next_states, next_x_pos, next_time).detach().max(1)[0]
+                )
                 self.optimizer = self.optimizer_B
 
             # Compute the DQN target according to Equation (3) of the paper.
@@ -102,6 +132,12 @@ class DoubleDQNAgent(Agent):
 
             # Compute the loss and update the weights.
             loss = self.loss_function(q_actual.squeeze(), target)
+
+            # Update priorities in memory
+            loss_value = loss.detach().cpu().item()
+            self.memory.update_priorities(
+                indices, loss_value * weights
+            )
 
             # Backpropagate
             loss.backward()
@@ -122,3 +158,19 @@ class DoubleDQNAgent(Agent):
 
     def backup_weights(self, path):
         torch.save(self.q_a.state_dict(), path)
+
+    def add_to_memory(
+        self,
+        state,
+        action,
+        reward,
+        done,
+        next_state,
+        x_pos,
+        time,
+        next_x_pos,
+        next_time,
+    ):
+        self.memory.add(
+            state, action, reward, done, next_state, x_pos, time, next_x_pos, next_time
+        )
