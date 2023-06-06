@@ -69,3 +69,35 @@ The agent's performance is recorded as a video, which can be visualized for a mo
 
 > :warning: Please note that while the majority of the codebase is in English, the Jupyter notebook included in this project is primarily in Spanish. This is due to the intended audience for this work. We appreciate your understanding.
 
+# Run this project
+
+## Prerequisites
+
+Ensure you have the following installed on your system:
+
+- [Anaconda](https://www.anaconda.com/products/distribution) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
+
+## Installation
+
+To set up the environment and install all the dependencies, follow these steps:
+
+1. Clone the repository.
+
+2. Create the conda environment from the `environment.yml` file.
+
+    ```bash
+    conda env create -f environment.yml
+    ```
+
+3. Activate the environment.
+
+    ```bash
+    conda activate env_name
+    ```
+
+    Replace `env_name` with the name of your environment, which is found at the top of the `environment.yml` file, after `name: `. If no name was specified in `environment.yml`, the default name `my_env` will be used.
+
+## Usage
+
+After activating the environment, you are now ready to run the scripts or notebooks in the repository. 
+
