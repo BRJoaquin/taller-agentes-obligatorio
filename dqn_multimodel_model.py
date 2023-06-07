@@ -47,3 +47,9 @@ class DQN_Multimodel_Model(nn.Module):
 
         x = F.leaky_relu(self.fc1(x))
         return self.fc2(x)
+    
+    def load(self, path):
+        self.load_state_dict(torch.load(path))
+
+    def save(self, path):
+        torch.save(self.state_dict(), path)

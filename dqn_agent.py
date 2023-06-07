@@ -118,4 +118,4 @@ class DQNAgent(Agent):
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
     def backup_weights(self, path):
-        self.save_model(self.policy_net, path)
+        self.policy_net.save(path)

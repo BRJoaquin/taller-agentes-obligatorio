@@ -18,12 +18,12 @@ import numpy as np
 import torch
 
 
-def show_video():
+def show_video(path="video/*.mp4"):
     """
     Utility function to enable video recording of gym environment and displaying it
     To enable video, just do "env = wrap_env(env)""
     """
-    mp4list = glob.glob("video/*.mp4")
+    mp4list = glob.glob(path)
     if len(mp4list) > 0:
         mp4 = mp4list[0]
         video = io.open(mp4, "r+b").read()
@@ -150,13 +150,20 @@ class CroppingObservationWrapper(gym.ObservationWrapper):
         self.left_crop = left_crop
         self.right_crop = right_crop
         old_shape = self.observation_space.shape
-        new_shape = (old_shape[0] - self.top_crop - self.bottom_crop, old_shape[1] - self.left_crop - self.right_crop, old_shape[2])
-        self.observation_space = gym.spaces.Box(low=0, high=255, shape=new_shape, dtype=self.observation_space.dtype)
+        new_shape = (
+            old_shape[0] - self.top_crop - self.bottom_crop,
+            old_shape[1] - self.left_crop - self.right_crop,
+            old_shape[2],
+        )
+        self.observation_space = gym.spaces.Box(
+            low=0, high=255, shape=new_shape, dtype=self.observation_space.dtype
+        )
 
     def observation(self, observation):
-        cropped_observation = observation[self.top_crop:-self.bottom_crop, self.left_crop:-self.right_crop, :]
+        cropped_observation = observation[
+            self.top_crop : -self.bottom_crop, self.left_crop : -self.right_crop, :
+        ]
         return cropped_observation
-
 
 
 # close is called multiple times
@@ -177,7 +184,9 @@ def make_env(env_name, actions=[["right"], ["right", "A"]], do_crop=False):
 
     env = SkipFrame(env, skip=4)
     if do_crop:
-        env = CroppingObservationWrapper(env, top_crop=100, bottom_crop=20, left_crop=40, right_crop = 40)
+        env = CroppingObservationWrapper(
+            env, top_crop=100, bottom_crop=20, left_crop=40, right_crop=40
+        )
     env = GrayScaleObservation(env)
     env = ResizeObservation(env, shape=128)
     env = FrameStack(env, num_stack=4)

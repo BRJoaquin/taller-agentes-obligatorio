@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -38,3 +39,9 @@ class DQN_CNN_Model(nn.Module):
         x = x.view(x.size(0), -1)  # Flatten the tensor
         x = F.relu(self.fc1(x))
         return self.fc2(x)
+    
+    def load(self, path):
+        self.load_state_dict(torch.load(path))
+
+    def save(self, path):
+        torch.save(self.state_dict(), path)

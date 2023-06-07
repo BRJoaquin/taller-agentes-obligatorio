@@ -157,7 +157,8 @@ class CustomDQNAgent(Agent):
             self.q_a.load_state_dict(self.q_b.state_dict())
 
     def backup_weights(self, path):
-        torch.save(self.q_a.state_dict(), path)
+        self.q_a.save(path + "_a")
+        self.q_b.save(path + "_b")
 
     def add_to_memory(
         self,

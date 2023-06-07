@@ -144,9 +144,6 @@ class Agent(ABC):
 
         return rewards
 
-    def save_model(self, policy, path):
-        torch.save(policy.state_dict(), path)
-
     # Calculate the epsilon value for the current step
     # If epsilon_anneal is not set, then the epsilon value will be decayed exponentially
     def compute_epsilon(self, steps_so_far):
