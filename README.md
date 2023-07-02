@@ -101,3 +101,4 @@ To set up the environment and install all the dependencies, follow these steps:
 
 After activating the environment, you are now ready to run the scripts or notebooks in the repository. 
 
+Here we go! 🍄
